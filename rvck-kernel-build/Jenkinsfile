@@ -1,27 +1,10 @@
 
 node('jenkins-agent-docker-sg2042') {
-
-    def kernel_build_params
-    def lava_trigger_params
-    def script_content = ""
-
     stage("checkout scm") {
         cleanWs()
-        node("jenkins-agent-lavacli-docker") {
-            cleanWs()
-            checkout scm
-            load('config.groovy')
+        checkout scm
 
-            kernel_build_params = kernel_build_params_keys.collect {
-                all_params[it]
-            }
-            lava_trigger_params = lava_trigger_params_keys.findAll {
-                                        params.containsKey(it)
-                                    }.collect {
-                                        string(name: it, value: params[it])
-                                    }
-            script_content = readFile 'rvck-kernel-build/run.sh'
-        }
+        load('src/config.groovy')
     }
 
     def isAnyParams = params.size() != 0
@@ -29,17 +12,25 @@ node('jenkins-agent-docker-sg2042') {
 
     stage("properties") {
         properties([
-            parameters(kernel_build_params),
+            parameters(kernel_build_params_keys.collect {
+                all_params[it]
+            }),
         ])
     }
     
-    if(isAnyParams) {
-       
-        stage("build") {
+    if(!isAnyParams) {
+        sh 'exit 0'
+    }
+
+    stage("build") {
+        dir("work") {
             timestamps {
                 try {
+                    // 拉取仓库
+                    sh "bash src/git-fetch-in-dir.sh ${FETCH_REF}"
+
                     // 执行构建脚本
-                    sh script_content
+                    sh 'rvck-kernel-build/run.sh'
                     
                     // 更新github状态
                     build wait: false, job: 'gh_actions', parameters: [
@@ -48,17 +39,6 @@ node('jenkins-agent-docker-sg2042') {
                         string(name: 'COMMENT_CONTENT', value: 'Kernel build success!'),
                         string(name: 'SET_LABEL', value: 'kernel_build_succeed,lava_checking'),
                     ]
-                    
-                    // 触发lava测试
-                    
-                    
-                    lava_trigger_params += [
-                        string(name: 'rootfs_download_url', value: readFile('rootfs_download_url')),
-                        string(name: 'kernel_download_url', value: readFile('kernel_download_url')),
-                    ]
-                    echo "lava_trigger_params: ${lava_trigger_params}"
-                    
-                    build wait: false, job: 'rvck-lava-trigger', parameters: lava_trigger_params
                 } catch (err) {
                     
                     build wait: false, job: 'gh_actions', parameters: [
@@ -74,5 +54,29 @@ node('jenkins-agent-docker-sg2042') {
             }
         }
     }
+
+    stage("trigger next") {
+        // 触发kunit
+        build wait false, job: 'rvck-kunit-test', parameters: kunit_test_params_keys.collect { 
+            string(name: it, value: params[it])
+        }
+
+        // 触发lava测试
+        def lava_trigger_params = lava_trigger_params_keys.findAll {
+                        params.containsKey(it)
+                    }.collect {
+                        string(name: it, value: params[it])
+                    }
+
+        lava_trigger_params += [
+            string(name: 'rootfs_download_url', value: readFile('work/rootfs_download_url')),
+            string(name: 'kernel_download_url', value: readFile('work/kernel_download_url')),
+        ]
+
+        echo "lava_trigger_params: ${lava_trigger_params}"
+        
+        build wait: false, job: 'rvck-lava-trigger', parameters: lava_trigger_params
+    }
+    
     
 }

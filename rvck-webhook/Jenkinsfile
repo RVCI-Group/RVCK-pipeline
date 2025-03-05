@@ -41,7 +41,7 @@ node('jenkins-agent-gh-docker') {
     }
     
     stage("trigger kernel build") {
-        load 'config.groovy'
+        load 'src/config.groovy'
 
         echo "all keys: ${kernel_build_params_keys}"
         def kernelBuildParams = kernel_build_params_keys.findAll{ fileExists(it) }.collect {

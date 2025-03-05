@@ -1,0 +1,39 @@
+
+node('jenkins-agent-docker-sg2042') {
+
+    stage("checkout scm") {
+        cleanWs()
+        checkout scm
+        load('src/config.groovy')
+    }
+
+    def isAnyParams = params && params.size() != 0
+    
+
+    stage("properties") {
+        properties([
+            parameters(kunit_test_params_keys.collect {
+                all_params[it]
+            }),
+        ])
+    }
+    
+    if(!isAnyParams) {
+        sh 'exit 0'
+    }   
+    stage("build") {
+        timestamps {
+            try {
+                // 执行检查
+                sh'bash rvck-kunit-test/run.sh'
+                
+            } catch (err) {
+
+                currentBuild.result = 'FAILURE'
+                throw err
+            }
+        }
+    }
+    
+    
+}
