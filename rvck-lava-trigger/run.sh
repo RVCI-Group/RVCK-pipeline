@@ -2,6 +2,8 @@
 set -e
 set -x
 
+: > COMMENT_CONTENT
+
 repo_name=$(echo ${REPO##h*/} | awk -F'.' '{print $1}')
 qemu_job_name=${repo_name}_pr_${ISSUE_ID}
 device_type=$(yq .device_type "${lava_template}")
