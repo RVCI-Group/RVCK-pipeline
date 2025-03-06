@@ -9,7 +9,7 @@ all_params_desc = [
     'rootfs_download_url': 'rootfs下载链接',
     'lava_template': 'lava测试模板',
     'testcase_url': '需要执行的用例yaml 文件路径',
-    'testcase': 'ltp测试时，指定测试套',
+    'testcase_params': '测试用例参数,[key=value ...]',
     'testcase_repo': 'lava 仓库地址',
 
     'COMMENT_CONTENT': '评论内容, 用于 gh issue $ISSUE_ID -b "$COMMENT_CONTENT"',
@@ -22,7 +22,6 @@ params_defaultvalue = [
     "testcase_repo": 'https://github.com/RVCK-Project/lavaci.git',
     "lava_template": "lava-job-template/qemu/qemu-ltp.yaml",
     "testcase_url": "lava-testcases/common-test/ltp/ltp.yaml",
-    "testcase": "math",
 ]
 
 all_params = all_params_desc.collectEntries { name, desc ->
@@ -36,7 +35,7 @@ kernel_build_params_keys = [
     "FETCH_REF",
     'lava_template',
     'testcase_url',
-    'testcase',
+    'testcase_params',
 ]
 
 gh_actions_params_keys = [
@@ -56,7 +55,7 @@ lava_trigger_params_keys = [
     'testcase_repo',
     "lava_template",
     "testcase_url",
-    "testcase",
+    "testcase_params",
 ]
 
 label_group = [

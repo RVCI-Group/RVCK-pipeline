@@ -22,25 +22,21 @@ def parse_comment(comment: str):
         return res
 
     import shlex
-    res = {
+    data = {
         item[0]: item[1].strip("'\"") if len(item) == 2 else ""
         for item in [
             str(i).split('=',maxsplit=1)
         for i in shlex.split(comment.strip()[6:])]
     }
-    
+    for k in ['lava_template','testcase_url', 'fetch']:
+        if k in data:
+            res[k] = data.pop(k)
+    res["testcase_params"] = "\n".join([f"{k}={v}" for k, v in data.items()])
+
     # 检查文件是否存在
     for k in ['lava_template','testcase_url',]:
         if k in res and os.system(f'gh api repos/RVCK-Project/lavaci/contents/{res[k]}'):
             raise Exception(f"{k}={res[k]} not found in RVCK-Project/lavaci")
-    
-    # 检查testcase是否支持
-    if 'testcase_url' in res and len(res['testcase']):
-        import yaml,json,base64
-        file_content = yaml.safe_load(base64.b64decode(json.loads(os.popen(f'gh api repos/RVCK-Project/lavaci/contents/{res["testcase_url"]}').read())["content"]).decode())
-        print("all support testcase:", file_content["params"]["TST_CMDFILES"])
-        if res['testcase'] not in file_content["params"]["TST_CMDFILES"]:
-            raise Exception(f"testcase={res['testcase']} not support")
 
     for k, v in res.items():
         print(f"{k} = '{v}'")
@@ -48,7 +44,7 @@ def parse_comment(comment: str):
     return res
 
 def get_pr_fetch_ref(pr_id, repo):
-    """pr 源分支及目标分支，检查是否可合入mergeable """
+    """pr 源分支及目标分支, 检查是否可合入mergeable """
 
     mergeable = json.loads(os.popen(f"gh pr view {pr_id} --json mergeable -R {repo}").read())["mergeable"]
     if mergeable != "MERGEABLE":
@@ -77,7 +73,7 @@ def issue_comment(payload: dict):
     else:
         if "fetch" not in res:
             raise Exception("params:fetch is required")
-        res["FETCH_REF"] = res["fetch"]
+        res["FETCH_REF"] = res.pop("fetch")
     
     write_properties_file(res)
 
@@ -113,6 +109,7 @@ def issues(payload: dict):
 
     if not len(res.get("fetch", "")):
         raise Exception("params:fetch is required")
+    res["FETCH_REF"] = res.pop("fetch")
     res["REPO"] = payload["repository"]["clone_url"]
     res["ISSUE_ID"] = payload["issue"]["number"]
 

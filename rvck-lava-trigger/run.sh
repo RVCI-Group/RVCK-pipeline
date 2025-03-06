@@ -22,17 +22,37 @@ lavacli_admim(){
     lavacli --uri https://${lava_admin_token}@${lava_server}/RPC2/ ${command} ${option} ${jobid}
 }
 
-yq e ".job_name |= sub(\"\\\${qemu_job_name}\",\"${qemu_job_name}\")" -i ${lava_template}
-yq e ".context.extra_options[] |=  sub(\"hostfwd=tcp::10001-:22\", \"hostfwd=tcp::${ssh_port}-:22\")" -i ${lava_template}
-yq e ".actions[0].deploy.images.kernel.url |= sub(\"\\\${qemu_kernel_image_url}\", \"${kernel_download_url}\")" -i ${lava_template}
-yq e ".actions[0].deploy.images.rootfs.url |= sub(\"\\\${qemu_rootfs_image_url}\", \"${rootfs_download_url}\")" -i ${lava_template}
-yq e ".actions[2].test.definitions[0].name |= sub(\"\\\${testitem_name}\",\"${testitem_name}\")" -i ${lava_template}
-yq e ".actions[2].test.definitions[0].path |= sub(\"\\\${testcase_url}\",\"${testcase_url}\")" -i ${lava_template}
-yq e ".actions[2].test.definitions[0].repository |= sub(\"\\\${testcase_repo}\",\"${testcase_repo}\")" -i ${lava_template}
-yq e ".actions[2].test.definitions[0].parameters.TST_CMDFILES |= sub(\"\\\${ltp_testsuite}\",\"${testcase}\")" -i ${lava_template}
+yq e ".job_name |= sub(\"\\\${qemu_job_name}\",\"${qemu_job_name}\")" -i "${lava_template}"
+yq e ".context.extra_options[] |=  sub(\"hostfwd=tcp::10001-:22\", \"hostfwd=tcp::${ssh_port}-:22\")" -i "${lava_template}"
+yq e ".actions[0].deploy.images.kernel.url |= sub(\"\\\${qemu_kernel_image_url}\", \"${kernel_download_url}\")" -i "${lava_template}"
+yq e ".actions[0].deploy.images.rootfs.url |= sub(\"\\\${qemu_rootfs_image_url}\", \"${rootfs_download_url}\")" -i "${lava_template}"
+yq e ".actions[2].test.definitions[0].name |= sub(\"\\\${testitem_name}\",\"${testitem_name}\")" -i "${lava_template}"
+yq e ".actions[2].test.definitions[0].path |= sub(\"\\\${testcase_url}\",\"${testcase_url}\")" -i "${lava_template}"
+yq e ".actions[2].test.definitions[0].repository |= sub(\"\\\${testcase_repo}\",\"${testcase_repo}\")" -i "${lava_template}"
 
+if [ "$testcase_params" = "" ]; then
+    yq e 'del(.actions[2].test.definitions[0].parameters)' -i "${lava_template}"
 
-lava_jobid=$(lavacli_admim jobs submit ${lava_template})
+else
+    while read -r l; do
+        if [ "$l" = "" ]; then
+            continue
+        fi
+
+        k="${l%%=*}"
+        v="${l#"${k}="}"
+        echo "key: $k, value: $v"
+        if ! grep -q "\${$k}" "${lava_template}"; then
+            echo "key=$k is not found in ${lava_template}"
+            exit 1
+        fi
+
+        sed -i "s@\${$k}@$v@g" "${lava_template}"
+
+    done <<< "$testcase_params"
+fi
+
+lava_jobid=$(lavacli_admim jobs submit "${lava_template}")
 lavacli_admim jobs wait ${lava_jobid}
 sleep 5
 lava_result_url=https://${lava_server}/scheduler/job/${lava_jobid}
