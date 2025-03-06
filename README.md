@@ -48,17 +48,40 @@ PR/issue -> webhook -> jenkins job -> 分析 issue:/check sg2042 commitid , PR�
 |:-:|:-:|:-:|:-:|
 |lava_template|lava模板文件路径|lava-job-template/qemu/qemu-ltp.yaml|从[RAVA项目](https://github.com/RVCK-Project/lavaci)获取|
 |testcase_url|lava测试用例路径|llava-testcases/common-test/ltp/ltp.yaml|从[RAVA项目](https://github.com/RVCK-Project/lavaci)获取|
-|testcase|测试用例的参数(ltp测试时，设置为空，效果为执行全部ltp测试)|math|从[RAVA项目](https://github.com/RVCK-Project/lavaci)获取|
-|fetch|当前仓库的分支名或commmit_sha,用于告知内核构建所需代码来源. ISSUE、ISSUE_COMMENT 必要参数。PR、PR_COMMENT 不读取此参数|issue必填参数|当前仓库的分支名，或commit_sha|
+|fetch|当前仓库的分支名或commit_sha,用于告知内核构建所需代码来源. ISSUE、ISSUE_COMMENT 必要参数。PR、PR_COMMENT 不读取此参数|issue必填参数|当前仓库的分支名，或commit_sha|
+|测试变量|测试用例的参数|传递变量，并赋值为all即为测试全量，不传递变量即为测试默认值(模板里设置的默认值)|从[RAVA项目](https://github.com/RVCK-Project/lavaci) lava_template模板里actions.test.definitions.parameters下获取花括号里的变量名，比如${duration_hour}即为duration_hour、${ltp_testsuite}即为ltp_testsuite|
+
 
 ```bash
 # Example:
-/check lava_template='path/to/lava template.yaml' testcase_url=path/to/xxx.yaml testcase=math
+/check lava_template='path/to/lava template.yaml' testcase_url=path/to/xxx.yaml 测试变量
 
-# 全量ltp测试
-/check lava_template='path/to/lava template.yaml' testcase_url=path/to/xxx.yaml testcase=
-### or
-/check lava_template='path/to/lava template.yaml' testcase_url=path/to/xxx.yaml testcase=''
+# fio测试
+/check lava_template=lava-job-template/qemu/qemu.yaml testcase_url=lava-testcases/performance-test/fio/fio.yaml
+
+# sysbench测试
+/check lava_template=lava-job-template/qemu/qemu.yaml testcase_url=lava-testcases/performance-test/sysbench/sysbench.yaml
+
+# ltp默认参数测试
+/check lava_template=lava-job-template/qemu/qemu-ltp.yaml testcase_url=lava-testcases/common-test/ltp/ltp.yaml 
+
+# ltp指定math测试
+/check lava_template=lava-job-template/qemu/qemu-ltp.yaml testcase_url=lava-testcases/common-test/ltp/ltp.yaml ltp_testsuite=math
+
+# ltp全量测试
+/check lava_template=lava-job-template/qemu/qemu-ltp.yaml testcase_url=lava-testcases/common-test/ltp/ltp.yaml ltp_testsuite=all
+
+# ltp-stress默认参数测试
+/check lava_template=lava-job-template/qemu/qemu-ltp-stress.yaml testcase_url=lava-testcases/common-test/ltp-stress/ltp-stress.yaml
+
+# ltp-stress指定1小时测试
+/check lava_template=lava-job-template/qemu/qemu-ltp-stress.yaml testcase_url=lava-testcases/common-test/ltp-stress/ltp-stress.yaml duration_hour=1
+
+# issue下指定commitid执行默认测试
+/check fetch=d370d4b6b1a340176d56ecf48459fcc7e899df1f
+
+# issue下指定commitid执行fio测试
+/check fetch=d370d4b6b1a340176d56ecf48459fcc7e899df1f lava_template=lava-job-template/qemu/qemu.yaml testcase_url=lava-testcases/performance-test/fio/fio.yaml
 ```
 
 ##### rvck/rvck-lava-trigger
